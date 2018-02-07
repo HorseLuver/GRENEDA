@@ -42,8 +42,10 @@ String sciNotation (float number)
   exp_sign = ((number > -1 && number < 1) ? '-' : '+');
   /*  loop to calculate the exponent  */
   if (exp_sign == '-')
-  { /* when number < -10 --- 10 < number */
-    for ( ; number < 1; number *= 10) exponent++;
+  {
+    if(number != 0)
+      /* when number < -10 --- 10 < number */
+      for ( ; number < 1; number *= 10) exponent++;
   }
   else
   { /* when -1 > number > 1 */
