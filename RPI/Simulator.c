@@ -68,8 +68,8 @@ void updateDate (char* date)
 void fileWrite (char* path, char* data)
 {
     FILE* file = fopen(path,"w");
-
-
+    
+    
     fclose(file);
 }
 
