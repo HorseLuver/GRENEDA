@@ -6,7 +6,7 @@
 
 // Defenitions
 #define MAX_DATA 341796
-#define CREATE  5
+#define CREATE  1000
 #define FILE_PATH "DataBase"
 #define SMFR_PATH "Semaphore"
 #define TIME_INTERVAL 30
@@ -32,13 +32,10 @@ int main ()
         // Printing sensor readings S1 S2 S3 ...     
         for(int i = 0; i < 6; i++)      
         {
-            random = (float)(rand() % 20) / 100;      
-            sprintf(temp, " %f", random);
+            random = (float)(rand() % 20000) / 1000;      
+            sprintf(temp, " %.3f", random);
             strcat(data, temp);
         }
-        //strcat(data, (const char*) '\n');
-        sprintf(data, "%s\n", data);
-        printf("Data: %s", data);
         // Getting file Name
         sprintf(file_name, "%s/%06d_%s.dat", FILE_PATH, rec_num, date);
         fileWrite(file_name, data);
@@ -70,7 +67,7 @@ void updateDate (char* date)
         day ++;
     }
     if(day > 29) {
-        day -= 7;
+        day -= 29;
         month ++;
     }
     if(month >= 12){
