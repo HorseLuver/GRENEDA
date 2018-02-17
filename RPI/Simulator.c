@@ -6,7 +6,7 @@
 
 // Defenitions
 #define MAX_DATA 341796
-#define CREATE  1000
+#define CREATE  100
 #define FILE_PATH "DataBase"
 #define SMFR_PATH "Semaphore"
 #define TIME_INTERVAL 30
