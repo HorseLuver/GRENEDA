@@ -7,9 +7,10 @@
 // Defenitions
 #define MAX_DATA 341796
 #define CREATE  100
-#define FILE_PATH "DataBase"
+#define SEMAPHORE 702
+#define DB_PATH "DataBase"
 #define SMFR_PATH "Semaphore"
-#define TIME_INTERVAL 30
+#define TIME_INTERVAL 50
 
 // Functions
 void updateDate (char* date);
@@ -37,10 +38,14 @@ int main ()
             strcat(data, temp);
         }
         // Getting file Name
-        sprintf(file_name, "%s/%06d_%s.dat", FILE_PATH, rec_num, date);
+        sprintf(file_name, "%s/%06d_%s.dat", DB_PATH, rec_num, date);
         fileWrite(file_name, data);
         updateDate(date);
     }
+
+    //Creating a Semaphore
+    sprintf(file_name, "%s/%06d", SMFR_PATH, SEMAPHORE);
+    fileWrite(file_name, "hello_world");
 
     return 0;
 }
@@ -83,7 +88,6 @@ void updateDate (char* date)
 void fileWrite (char* path, char* data)
 {
     FILE* file = fopen(path,"w");
-    //fprintf(file, "%s", data);
     fputs(data, file);
     fclose(file);
 }
