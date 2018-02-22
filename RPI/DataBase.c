@@ -1,37 +1,71 @@
 /*
-  Date: Feb 18, 2017
-    
+  Date: Feb 21, 2017
+  DataBase code to extract data from DataBase folder
+  Excepts one or two date parameters 
+  Extracts data based on the parameters and writes into CSV file
+  output -> output.csv
 */
-
 
 #include <stdio.h>
 #include <stdlib.h>   // for system call: system(commmad)
 #include <time.h>
 #include <string.h>
+#include <ctype.h>
 
 #define DB_PATH "DataBase"
 #define SMFR_PATH "Semaphore"
 
+
+// Function that returs a semaphore value from 
 int get_semaphore();
 
-int main ()
-{
-  int semaphore = -2;
-  char crit_sec[3][10];
-  char quiry[100];
+// Structire to hold parse time data
+struct Date {
+  int Y1, Y2, Y3, Y4; 
+  int M1, M2; 
+  int D1, D2; 
+};
 
+// Function that parse a string Date into Data structure
+void parseTime(struct Date*, char* );
+
+// Check the validity of a string
+int validityCheck (char* str);
+
+// Checks command line arguments
+int checkArduments(FILE*, int, char**);
+
+
+///////////////////////////////////////////
+//                                       //
+//                  MAIN                 //
+//                                       //                   
+///////////////////////////////////////////
+int main (int argc, char *argv[])
+{
+  int semaphore = -2;                         // Sensor DB semaphore
+  char crit_sec[3][10];                       // Critical section to be avoided
+  char quiry[100];                            // System call quiry
+  FILE* out_file = fopen("output.csv", "w");  // File for output data storage
+  FILE* temp_file;                            // File to read quiry output file names
+
+  // Checking arguments provided by the user
+  if(checkArduments(out_file, argc, argv) == 1) return 0;
+  
   // get semaphore file and calculate critical section
   semaphore = get_semaphore();
   sprintf(&crit_sec[0][0], "%06d", semaphore-1);
   sprintf(&crit_sec[1][0], "%06d", semaphore);
   sprintf(&crit_sec[2][0], "%06d", semaphore+1);
 
-  sprintf(quiry, "ls DataBase | grep -v \"%s\\|%s\\|%s.*\" | grep \".*_2017_0[78]_[02][91]_.*\\.dat$\" > output.txt", crit_sec[0], crit_sec[1], crit_sec[2]);
 
-  system(quiry);
+  //sprintf(quiry, "ls DataBase | grep -v \"%s\\|%s\\|%s.*\" | grep \".*_2017_0[78]_[02][91]_.*\\.dat$\" > temp", crit_sec[0], crit_sec[1], crit_sec[2]);
+
+  //system(quiry);
 
   return 0;
 }
+
 
 /*
     This function returns the value of a semaphore
@@ -53,3 +87,74 @@ int get_semaphore()
   return semaphore;                   // Return semaphore value
 }
 
+
+/*
+    Check the validity of a string
+    0 if valid Date - YYYY_MM_DD
+    1 if not validity
+*/
+int validityCheck (char* str)
+{
+  int i = 0;        // Variable to count tokens
+  char temp[50];
+  // Parsing YYYY_MM_DD
+  char* token = strtok(str, "_");
+  for(; token != NULL; i++, token = strtok(NULL, "_"))
+  {
+    sprintf(temp, "%s", token);           // Printing to temporary container
+    for(int j = 0; j < strlen(temp); j++) // Loop to determine if data in a string is valid
+    {
+      if(!isdigit((int)temp[j])) return 1;
+    }
+  }
+  printf("Index = %d\n", i);
+  if(i != 3) return 1;
+  return 0;
+}
+
+
+/*
+  Check to see if command line arguments have a proper format
+*/
+int checkArduments(FILE* out_file, int count, char** arg)
+{
+  // Checking arguments provided by the user
+  if(count == 1) 
+  {
+    // Exiting execution if date parameters are not provided
+    fprintf(out_file, "FAILED, Not enought arguments provided\n");
+    fclose(out_file);
+    return 1;
+  }
+  else
+  {
+    // Checking Fist parameter
+    if(validityCheck(arg[1]))
+    {
+      fprintf(out_file, "FAILED, First argument wrong format\n");
+      fclose(out_file);
+      return 1;
+    }
+    // Checking Second parameter
+    if(count > 2)
+    {
+      if(validityCheck(arg[2]))
+      {
+        fprintf(out_file, "FAILED, Second argument wrong format\n");
+        fclose(out_file);
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+
+/*
+  Function that parse a string Date into Data structure
+  String format = YYYY_MM_DD
+*/
+void parseTime(struct Date *date, char* str)
+{
+
+}

@@ -12,6 +12,6 @@ gcc -o Simulator.exe Simulator.c
 
 ./Simulator.exe
 
-rm text.txt
+# rm text.txt
 
-ls DataBase > text.txt
+# ls DataBase > text.txt
