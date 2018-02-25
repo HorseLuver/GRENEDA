@@ -19,21 +19,23 @@
 //                                       //                   
 ///////////////////////////////////////////
 
-#define DB_PATH "DataBase"
+#define DB_PATH   "DataBase"
 #define SMFR_PATH "Semaphore"
+
+#define Y1  0
+#define Y2  1
+#define Y3  2
+#define Y4  3
+#define M1  4
+#define M2  5
+#define D1  6
+#define D2  7
 
 // Function that returs a semaphore value from 
 int get_semaphore();
 
-// Structire to hold parse time data
-struct Date {
-  int Y1, Y2, Y3, Y4; 
-  int M1, M2; 
-  int D1, D2; 
-};
-
 // Function that parse a string Date into Data structure
-void parseTime(struct Date*, char* );
+void parseTime(int*, char* );
 
 // Check the validity of a string
 int validityCheck (const char* str);
@@ -42,8 +44,13 @@ int validityCheck (const char* str);
 int checkArduments(FILE*, int, char**);
 
 // Builds regex search query based on Data structure
-void buildRegex (char*, struct Date*, struct Date*, int);
+void buildRegex (char*, int*, int*, int);
 
+// Function used internally to create a range string
+void rangeString (char*, int, int);
+
+// Rewriting Database files into CSV
+int rewrite(FILE* );
 
 ///////////////////////////////////////////
 //                                       //
@@ -53,10 +60,10 @@ void buildRegex (char*, struct Date*, struct Date*, int);
 
 int main (int argc, char *argv[])
 {
-  struct Date D1, D2;                         // Structure to hold date digits
+  int d1[8], d2[8];                           // Array to hold date digits
   int semaphore = -2;                         // Sensor DB semaphore
   char crit_sec[3][10];                       // Critical section to be avoided
-  char quiry[100], regex[100];                    // System call quiry
+  char quiry[100], regex[100];                // System call quiry
   FILE* out_file = fopen("output.csv", "w");  // File for output data storage
   FILE* temp_file;                            // File to read quiry output file names
 
@@ -69,20 +76,23 @@ int main (int argc, char *argv[])
   sprintf(&crit_sec[1][0], "%06d", semaphore);
   sprintf(&crit_sec[2][0], "%06d", semaphore+1);
 
-  // Parsing and second arguments
-  parseTime(&D1, argv[1]);
-  if(argc == 3) parseTime(&D2, argv[2]);
+  // Parsing first and second arguments
+  parseTime(d1, argv[1]);
+  if(argc == 3) parseTime(d2, argv[2]);
 
-  printf("%d%d%d%d_%d%d_%d%d\n", D1.Y1, D1.Y2, D1.Y3, D1.Y4, D1.M1, D1.M2, D1.D1, D1.D2);
-
-  buildRegex(regex, &D1, &D2, 1);
-
-  sprintf(quiry, "ls DataBase | grep -v \"%s\\|%s\\|%s.*\" | grep %s > temp", crit_sec[0], crit_sec[1], crit_sec[2], regex);
+  // Generating Regular expression based on argumenets
+  if(argc == 2) buildRegex(regex, d1, d2, 1);
+  else if(argc == 3) buildRegex(regex, d1, d2, 2);
+  
+  // Printing the full search query
+  sprintf(quiry, "ls DataBase | grep -v \"%s\\|%s\\|%s.*\" | grep %s > list", crit_sec[0], crit_sec[1], crit_sec[2], regex);
   printf("%s\n", quiry);
 
-  //sprintf(quiry, "ls DataBase | grep -v \"%s\\|%s\\|%s.*\" | grep \".*_2017_0[78]_[02][91]_.*\\.dat$\" > temp", crit_sec[0], crit_sec[1], crit_sec[2]);
-  
+  // System call for the search queiry
   system(quiry);
+
+  // Rewriting results into CSV file
+  rewrite(out_file);
 
   return 0;
 }
@@ -103,8 +113,10 @@ int get_semaphore()
 {
   FILE* file;
   int semaphore = -1;
- 
-  system("ls Semaphore > temp.txt");  // Pipe into a file
+  char query[50];
+  
+  sprintf(query, "ls %s > temp.txt", SMFR_PATH);
+  system(query);                      // Pipe into a file
   file = fopen("temp.txt", "r+");     // Open the file
   if(file == NULL)
     return -1;
@@ -183,24 +195,23 @@ int checkArduments(FILE* out_file, int count, char** arg)
   Function that parse a string Date into Data structure
   String format = YYYY_MM_DD
 */
-void parseTime(struct Date *date, char* str)
+void parseTime(int* date, char* str)
 {
   int year = 0, month = 0, day = 0;
 
   sscanf(str, "%d_%d_%d", &year, &month, &day);
 
   // Extracting Year
-  date->Y4 = year%10;
-  date->Y3 = year/10%10;
-  date->Y2 = year/100%10;
-  date->Y1 = year/1000%10;
+  date[Y4] = year%10;
+  date[Y3] = year/10%10;
+  date[Y2] = year/100%10;
+  date[Y1] = year/1000%10;
   // Extracting Month
-  date->M2 = month%10;
-  date->M1 = month/10%10;
+  date[M2] = month%10;
+  date[M1] = month/10%10;
   // Extracting Day
-  date->D2 = day%10;
-  date->D1 = day/10%10;
-
+  date[D2] = day%10;
+  date[D1] = day/10%10;
 }
 
 /*
@@ -208,15 +219,70 @@ void parseTime(struct Date *date, char* str)
   if number of dates = 1 used only Date 1 structure
   returns a pointer to a string search query
 */
-void buildRegex (char* output, struct Date* D1, struct Date* D2, int dates)
+void buildRegex (char* output, int* d1, int* d2, int two_dates)
 {
-  if(dates == 1)
+  char r[8][10];   // Container to hold range parameres
+  // Two date arguments provided
+  if(two_dates == 1)
   {
-    sprintf(output, "\".*_%d%d%d%d_%d%d_%d%d_.*\\.dat$\"", D1->Y1, D1->Y2, D1->Y3, D1->Y4, D1->M1, D1->M2, D1->D1, D1->D2);
+    sprintf(output, "\".*_%d%d%d%d_%d%d_%d%d_.*\\.dat$\"", d1[Y1], d1[Y2], d1[Y3], d1[Y4], d1[M1], d1[M2], d1[D1], d1[D2]);
     // grep \".*_2017_0[78]_[02][91]_.*\\.dat$\" > temp", 
   }
-  else
+  else // One date arguments provided
   {
-
+    // Generating range string [1-9]
+    for(int i=0; i < 8; i++) rangeString(r[i], d1[i], d2[i]);
+    sprintf(output, "\".*_%s%s%s%s_%s%s_%s%s_.*\\.dat$\"", r[Y1], r[Y2], r[Y3], r[Y4], r[M1], r[M2], r[D1], r[D2]);
   }
+}
+
+/*
+  Function used internally to create a range string
+  Input [int] 4, 2 -> Output [char] 2-4
+*/
+void rangeString (char* output, int n1, int n2)
+{
+  if(n1 == n2) sprintf(output, "%01d", n1);
+  else if (n1 > n2) sprintf(output, "[%01d-%01d]", n2, n1);
+  else if (n2 > n1) sprintf(output, "[%01d-%01d]", n1, n2);
+}
+
+/*
+  Rewriting Database files pointed by [temp] into output CSV
+  Printing any errors, and closing the file
+  Success = 0, Failure = 1
+*/
+int rewrite(FILE* csv)
+{
+  char buff[200], name[50], full_name[50], dateTime[50];
+  float s[6] = {0, 0, 0, 0, 0, 0};
+
+  FILE* db_file;
+  FILE* list = fopen("list", "r");         // File pointer to list of file names
+  // Error checking
+  if(list == NULL)
+  {
+    fprintf(csv, "FAILED,count file was not created\n");
+    fclose(csv);
+    return 1;     // Finish Execution
+  }
+  // Loop to extract data
+  while(fgets(name, sizeof(name), list) != NULL)
+  {
+    // Getting file Name
+    name[strlen(name) - 1] = '\0';    // Getting rid extra newline charater
+    sprintf(full_name, "%s/%s", DB_PATH, name);
+    // Openning file for rewriting
+    db_file = fopen(full_name, "r");
+    if(db_file != NULL)
+    {
+      fscanf(db_file, "%s %f %f %f %f %f %f", dateTime, &s[0], &s[1], &s[2], &s[3], &s[4], &s[5]);
+      fprintf(csv, "%s,%f,%f,%f,%f,%f,%f\n", dateTime, s[0], s[1], s[2], s[3], s[4], s[5]);
+      fclose(db_file);
+    }
+  }
+  // Closing files
+  fclose(list);
+  fclose(csv);
+  return 0;
 }
