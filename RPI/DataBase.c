@@ -1,5 +1,5 @@
 /*
-  Date: Feb 21, 2017
+  Date: Feb 21, 2018
   DataBase code to extract data from DataBase folder
   Excepts one or two date parameters 
   Extracts data based on the parameters and writes into CSV file
